@@ -8,98 +8,111 @@ const youtube = google.youtube({
 // Top news channels
 const NEWS_CHANNEL_IDS = [
   "UCN6sm8iHiPd0cnoUardDAnw", // BBC News
-//   "UCYfdidRxbB8Qhf0Nx7ioOYw", // CNN
-//   "UCupvZG-5ko_eiXAupbDfxWw", // Al Jazeera
+  "UCYfdidRxbB8Qhf0Nx7ioOYw", // CNN
+  "UCHLqIOMPk20w-6cFgkA90jw", // Al Jazeera
 ];
 
 // In-memory cache
-let cachedComments = null;
+let cachedGrouped = null;
 let lastFetchedDate = null;
 
 // Simple spam filter
-function isSpam(comment) {
-  if (!comment.text) return true;
+function isSpam(commentText) {
+  if (!commentText) return true;
   const urlPattern = /(https?:\/\/[^\s]+)/g;
   const repeatedChars = /(.)\1{5,}/;
-  return urlPattern.test(comment.text) || repeatedChars.test(comment.text);
+  return urlPattern.test(commentText) || repeatedChars.test(commentText);
 }
 
-// Get ISO string for 7 days ago
+// ISO string for 7 days ago
 function sevenDaysAgo() {
   const d = new Date();
-  d.setDate(d.getDate() - 7);
+  d.setDate(d.getDate() - 2);
   return d.toISOString();
 }
 
 export async function GET(request) {
   try {
-    const today = new Date().toISOString().split("T")[0];
+    const todayISO = new Date().toISOString();
+    const today = todayISO.split("T")[0];
 
     // Return cached if already fetched today
-    if (cachedComments && lastFetchedDate === today) {
-      return Response.json({ comments: cachedComments, cached: true });
+    if (cachedGrouped && lastFetchedDate === today) {
+      return Response.json({ videos: cachedGrouped, cached: true });
     }
 
-    let allComments = [];
+    /** @type {Record<string, {videoId:string, videoTitle:string, comments:Array<{text:string,likes:number,publishedAt:string}>}>} */
+    const groups = {};
 
     for (const channelId of NEWS_CHANNEL_IDS) {
-      // Step 1: Search videos from the past week, sorted by view count
+      // Step 1: Search videos from the past 7 days, sorted by view count
       const searchRes = await youtube.search.list({
         part: ["snippet"],
         channelId,
         type: ["video"],
-        maxResults: 5, // top 5 videos by views
+        maxResults: 50,
         order: "viewCount",
-        publishedAfter: sevenDaysAgo(),
+        publishedAfter: sevenDaysAgo(), // ✅ last 7 days
       });
 
-      if (!searchRes.data.items || !searchRes.data.items.length) continue;
+      const items = searchRes.data.items ?? [];
+      if (!items.length) continue;
 
-      const mostViewed = searchRes.data.items[0]; // most viewed video
-      const videoId = mostViewed.id.videoId;
-      const videoTitle = mostViewed.snippet.title;
+      // Take TOP 5 per channel by viewCount (API already ordered)
+      const topFive = items.slice(0, 5);
 
-      // Step 2: Fetch comments for this video
-      let nextPageToken = null;
-      do {
-        const commentsRes = await youtube.commentThreads.list({
-          part: ["snippet"],
-          videoId,
-          maxResults: 100,
-          pageToken: nextPageToken || undefined,
-          textFormat: "plainText",
-        });
-        // console.log("🚀 ~ GET ~ commentsRes:", commentsRes)
+      for (const vid of topFive) {
+        const videoId = vid.id.videoId;
+        const videoTitle = vid.snippet.title;
 
-        commentsRes.data.items.forEach((item) => {
-          const snippet = item.snippet.topLevelComment.snippet;
-        //   console.log("🚀 ~ GET ~ snippet:", snippet)
-
-          if (snippet.publishedAt.startsWith(today)) {
-            allComments.push({
-              videoTitle,
-              author: snippet.authorDisplayName,
-              text: snippet.textDisplay,
-              likes: snippet.likeCount,
-              publishedAt: snippet.publishedAt,
-            });
-            // console.log("🚀 ~ GET ~ allComments:", allComments)
+        if (!groups[videoId]) {
+          groups[videoId] = { videoId, videoTitle, comments: [] };
         }
-    });
-    // console.log("🚀 ~ GET ~ allComments:", allComments)
 
-        nextPageToken = commentsRes.data.nextPageToken;
-      } while (nextPageToken);
+        // Step 2: Fetch comments for this video (skip if disabled)
+        try {
+          let nextPageToken = null;
+          do {
+            const commentsRes = await youtube.commentThreads.list({
+              part: ["snippet"],
+              videoId,
+              maxResults: 100,
+              pageToken: nextPageToken || undefined,
+              textFormat: "plainText",
+            });
+
+            for (const item of commentsRes.data.items ?? []) {
+              const sn = item.snippet.topLevelComment.snippet;
+              const publishedAt = sn.publishedAt ?? "";
+              const likeCount = sn.likeCount ?? 0;
+              const text = sn.textDisplay ?? "";
+
+              // keep only meaningful comments (not spam, at least 1 like)
+              if (likeCount > 50) {
+                groups[videoId].comments.push({
+                  text,
+                  likes: likeCount,
+                  // publishedAt,
+                });
+              }
+            }
+
+            nextPageToken = commentsRes.data.nextPageToken;
+          } while (nextPageToken);
+        } catch (err) {
+          console.warn(`Comments disabled for video ${videoId}:`, err.message);
+        }
+      }
     }
 
-    // Sort by likes
-    allComments.sort((a, b) => b.likes - a.likes);
+    // Convert groups object -> array
+    const groupedArray = Object.values(groups);
 
     // Cache results
-    cachedComments = allComments;
+    cachedGrouped = groupedArray;
     lastFetchedDate = today;
 
-    return Response.json({ comments: allComments, cached: false });
+    return Response.json({ videos: groupedArray, cached: false });
   } catch (error) {
     console.error("Error fetching comments:", error);
     return new Response(JSON.stringify({ error: "Failed to fetch comments" }), {
