@@ -9,15 +9,22 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
+    "dayjs": "^1.11.18",
+    "googleapis": "^159.0.0",
+    "ky": "^1.10.0",
+    "mongodb": "^6.19.0",
+    "next": "15.5.3",
     "react": "19.1.0",
     "react-dom": "19.1.0",
-    "next": "15.5.3"
+    "recharts": "^3.2.0",
+    "twitter-api-v2": "^1.27.0"
   },
   "devDependencies": {
+    "@eslint/eslintrc": "^3",
     "@tailwindcss/postcss": "^4",
-    "tailwindcss": "^4",
     "eslint": "^9",
     "eslint-config-next": "15.5.3",
-    "@eslint/eslintrc": "^3"
+    "tailwindcss": "^4"
   }
 }
