@@ -9,10 +9,12 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@google/genai": "^1.19.0",
     "@google/generative-ai": "^0.24.1",
     "dayjs": "^1.11.18",
     "googleapis": "^159.0.0",
     "ky": "^1.10.0",
+    "mime": "^4.1.0",
     "mongodb": "^6.19.0",
     "next": "15.5.3",
     "react": "19.1.0",
@@ -23,6 +25,7 @@
   "devDependencies": {
     "@eslint/eslintrc": "^3",
     "@tailwindcss/postcss": "^4",
+    "@types/node": "^24.3.3",
     "eslint": "^9",
     "eslint-config-next": "15.5.3",
     "tailwindcss": "^4"
