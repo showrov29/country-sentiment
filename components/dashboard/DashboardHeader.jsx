@@ -1,9 +1,9 @@
 "use client";
 import { motion } from "framer-motion";
-import { RefreshCw, Activity } from "lucide-react";
+import { RefreshCw, Activity, ArrowLeft } from "lucide-react";
 import clsx from "clsx";
 
-export default function DashboardHeader({ onRefresh, isRefreshing, lastUpdated }) {
+export default function DashboardHeader({ onRefresh, isRefreshing, lastUpdated, onHome, showHome }) {
   return (
     <motion.header 
       initial={{ opacity: 0, y: -20 }}
@@ -12,9 +12,19 @@ export default function DashboardHeader({ onRefresh, isRefreshing, lastUpdated }
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-zinc-900 dark:bg-white rounded-lg">
-            <Activity className="w-5 h-5 text-white dark:text-zinc-900" />
-          </div>
+          {showHome ? (
+             <button 
+               onClick={onHome}
+               className="p-2 -ml-2 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors group"
+             >
+               <ArrowLeft className="w-5 h-5 text-zinc-500 group-hover:text-zinc-900 dark:group-hover:text-white" />
+             </button>
+          ) : (
+            <div className="p-2 bg-zinc-900 dark:bg-white rounded-lg">
+               <Activity className="w-5 h-5 text-white dark:text-zinc-900" />
+            </div>
+          )}
+          
           <div>
             <h1 className="text-lg font-bold tracking-tight text-zinc-900 dark:text-white leading-none">
               Country Sentiment
