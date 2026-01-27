@@ -26,7 +26,7 @@ export default function ThemeList({ themes = [] }) {
       </div>
 
       <div className="space-y-4">
-        {themes.map((theme, i) => {
+        {themes.sort((a, b) => (b.total_likes || 0) - (a.total_likes || 0)).map((theme, i) => {
           const percent = maxLikes > 0 ? (theme.total_likes / maxLikes) * 100 : 0;
           
           return (
