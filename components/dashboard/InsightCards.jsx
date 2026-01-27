@@ -1,21 +1,43 @@
 "use client";
-import { motion } from "framer-motion";
-import { Lightbulb, AlertTriangle, CheckCircle2, Megaphone } from "lucide-react";
+import { motion, useMotionValue, useSpring, useTransform } from "framer-motion";
+import { Lightbulb, Megaphone, CheckCircle2 } from "lucide-react";
+import { containerStagger, fadeInUp } from "@/lib/motion-variants";
 
-const container = {
-  hidden: { opacity: 0 },
-  show: {
-    opacity: 1,
-    transition: {
-      staggerChildren: 0.1
-    }
+// 3D Tilt Card Component
+function TiltCard({ children, className }) {
+  const x = useMotionValue(0);
+  const y = useMotionValue(0);
+
+  const mouseX = useSpring(x, { stiffness: 500, damping: 100 });
+  const mouseY = useSpring(y, { stiffness: 500, damping: 100 });
+
+  function onMouseMove({ currentTarget, clientX, clientY }) {
+    const { left, top, width, height } = currentTarget.getBoundingClientRect();
+    x.set(clientX - left - width / 2);
+    y.set(clientY - top - height / 2);
   }
-};
 
-const item = {
-  hidden: { opacity: 0, y: 20 },
-  show: { opacity: 1, y: 0 }
-};
+  function onMouseLeave() {
+    x.set(0);
+    y.set(0);
+  }
+
+  const rotateX = useTransform(mouseY, [-300, 300], [5, -5]); // Inverted for natural tilt
+  const rotateY = useTransform(mouseX, [-300, 300], [-5, 5]);
+
+  return (
+    <motion.div
+      onMouseMove={onMouseMove}
+      onMouseLeave={onMouseLeave}
+      style={{ rotateX, rotateY, transformStyle: "preserve-3d" }}
+      className={`relative transition-all duration-200 ease-out ${className}`}
+    >
+       <div style={{ transform: "translateZ(20px)" }}>
+         {children}
+       </div>
+    </motion.div>
+  );
+}
 
 export default function InsightCards({ reasons = [], demands = [] }) {
   // Helper to strip Markdown bolding for cleaner titles
@@ -26,24 +48,23 @@ export default function InsightCards({ reasons = [], demands = [] }) {
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+    <motion.div 
+       variants={containerStagger}
+       initial="hidden"
+       animate="show"
+       className="grid grid-cols-1 lg:grid-cols-2 gap-8 perspective-1000"
+    >
       {/* REASONS COLUMN */}
-      <motion.div 
-        variants={container}
-        initial="hidden"
-        animate="show"
-        className="space-y-4"
-      >
+      <div className="space-y-4">
         <div className="flex items-center gap-2 mb-4">
           <Lightbulb className="w-5 h-5 text-amber-400" />
           <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">Key Drivers</h3>
         </div>
 
         {reasons.map((reason, idx) => (
-          <motion.div
+          <TiltCard
             key={idx}
-            variants={item}
-            className="group relative p-5 bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-2xl hover:border-zinc-400 dark:hover:border-zinc-600 transition-colors"
+            className="group p-5 bg-white dark:bg-zinc-900/50 backdrop-blur-sm border border-zinc-200 dark:border-zinc-800 rounded-2xl hover:border-zinc-400 dark:hover:border-zinc-600 hover:shadow-2xl dark:hover:shadow-emerald-900/10"
           >
             <h4 className="font-semibold text-zinc-800 dark:text-zinc-200 mb-2 group-hover:text-emerald-500 transition-colors">
               {cleanText(reason)}
@@ -51,17 +72,12 @@ export default function InsightCards({ reasons = [], demands = [] }) {
             <p className="text-sm text-zinc-500 dark:text-zinc-400 leading-relaxed">
               {getBody(reason)}
             </p>
-          </motion.div>
+          </TiltCard>
         ))}
-      </motion.div>
+      </div>
 
       {/* DEMANDS COLUMN */}
-      <motion.div 
-        variants={container}
-        initial="hidden"
-        animate="show"
-        className="space-y-4"
-      >
+      <div className="space-y-4">
         <div className="flex items-center gap-2 mb-4">
           <Megaphone className="w-5 h-5 text-blue-400" />
           <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">Public Demands</h3>
@@ -70,8 +86,9 @@ export default function InsightCards({ reasons = [], demands = [] }) {
         {demands.map((demand, idx) => (
           <motion.div
             key={idx}
-            variants={item}
-            className="flex gap-4 p-5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800/50 rounded-2xl"
+            variants={fadeInUp}
+            whileHover={{ scale: 1.02, x: 5 }}
+            className="flex gap-4 p-5 bg-zinc-50 dark:bg-zinc-950/80 border border-zinc-200 dark:border-zinc-800/50 rounded-2xl cursor-default"
           >
             <div className="flex-shrink-0 mt-1">
               <CheckCircle2 className="w-5 h-5 text-emerald-500/50" />
@@ -86,7 +103,7 @@ export default function InsightCards({ reasons = [], demands = [] }) {
             </div>
           </motion.div>
         ))}
-      </motion.div>
-    </div>
+      </div>
+    </motion.div>
   );
 }
